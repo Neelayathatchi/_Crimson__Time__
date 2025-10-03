@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crimson Time Manager (Local Storage Only)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons for aesthetic icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        /* Modern Font and Background */
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAFA;
+        }
+        /* UI Colors: Crimson (#DC143C) and Pure White (#FFFFFF) */
+        
+        .text-primary {
+            color: #DC143C;
+        }
+        
+        .bg-primary {
+            background-color: #DC143C;
+        }
+        
+        .border-primary {
+            border-color: #DC143C;
+        }
+        
+        .text-secondary {
+            color: #F8BBD0;
+        }
+        
+        .bg-secondary {
+            background-color: #F8BBD0;
+        }
+        
+        .btn-primary {
+            background-color: #DC143C;
+            color: white;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:hover {
+            background-color: #C31135;
+        }
+        
+        .nav-icon.active {
+            color: #DC143C;
+            font-weight: 700;
+        }
+        /* Layout for the main app container */
+        
+        #app-content {
+            padding-bottom: 6rem;
+            min-height: 100vh;
+        }
+        /* Fixed Bottom Navigation */
+        
+        .fixed-bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 50;
+            max-width: 28rem;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        /* Timer/Stopwatch display font style (Mono for perfect alignment) */
+        
+        .timer-display {
+            font-family: 'Inter', monospace;
+            letter-spacing: -1px;
+        }
+        
+        .shadow-crimson {
+            box-shadow: 0 4px 6px -1px rgba(220, 20, 60, 0.1), 0 2px 4px -2px rgba(220, 20, 60, 0.1);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen">
+    <!-- Main Content Area: Centered and constrained like a mobile app -->
+    <main id="app-content" class="w-full max-w-sm mx-auto p-4 md:p-6 bg-white shadow-xl min-h-screen">
+
+        <!-- ============================================== -->
+        <!-- VIEW 1: HOME/CLOCK -->
+        <!-- ============================================== -->
+        <div id="view-clock" class="view">
+            <header class="flex justify-between items-center mb-6">
+                <h1 class="text-3xl font-black text-gray-800">Crimson Time⏱</h1>
+                <button onclick="navigateTo('view-settings')" class="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition">
+                    <i data-lucide="user" class="w-6 h-6 text-gray-700"></i>
+                </button>
+            </header>
+
+            <!-- Circular Time/Calendar Display -->
+            <div class="circular-bg rounded-full w-full aspect-square flex flex-col items-center justify-center shadow-crimson border-4 border-primary mb-6">
+                <span id="current-time-display" class="text-7xl font-extrabold text-primary timer-display">--:--</span>
+                <span id="current-date-display" class="text-lg text-gray-500 font-medium mt-2">---</span>
+            </div>
+
+            <!-- Sub-Navigation for Clock related features -->
+            <div class="flex justify-between items-center text-gray-600 mb-6 border-b pb-3">
+                <button data-subview="subview-world-clock" onclick="switchSubView('subview-world-clock')" class="sub-nav-btn text-primary font-bold border-b-2 border-primary pb-1">World Clock</button>
+                <button data-subview="subview-timer" onclick="switchSubView('subview-timer')" class="sub-nav-btn hover:text-primary transition pb-1">Timer</button>
+                <button data-subview="subview-stopwatch" onclick="switchSubView('subview-stopwatch')" class="sub-nav-btn hover:text-primary transition pb-1">Stopwatch</button>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- SUB-VIEW A: WORLD CLOCK (Functional) -->
+            <!-- ============================================== -->
+            <div id="subview-world-clock" class="subview space-y-4">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Global Times</h2>
+                <div id="world-clock-list" class="space-y-3">
+                    <p class="text-center text-gray-500">Loading cities...</p>
+                </div>
+
+                <div class="pt-4 border-t mt-4">
+                    <input type="text" id="timezone-input" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Enter time zone (e.g., 'America/Los_Angeles')">
+                    <button id="add-timezone-btn" class="w-full mt-3 py-2 rounded-full text-white btn-primary font-semibold shadow-md">
+                        <i data-lucide="plus" class="w-5 h-5 inline mr-1"></i> Add City
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2 text-center">e.g., 'Asia/Kolkata' or 'Europe/London'</p>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- SUB-VIEW B: TIMER (Functional Countdown) -->
+            <!-- ============================================== -->
+            <div id="subview-timer" class="subview hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-8">Countdown</h2>
+
+                <div class="text-center mb-10">
+                    <!-- Circular border acts as a visual focus -->
+                    <div id="timer-display-circle" class="w-64 h-64 mx-auto mb-4 border-8 border-primary rounded-full flex flex-col items-center justify-center">
+                        <span id="timer-display-time" class="text-5xl text-primary font-bold timer-display">00:05:00</span>
+                        <div class="flex mt-3 gap-2">
+                            <input type="number" id="timer-hours" placeholder="H" min="0" max="23" value="0" class="w-12 p-1 text-center border rounded-md text-gray-700">
+                            <input type="number" id="timer-minutes" placeholder="M" min="0" max="59" value="5" class="w-12 p-1 text-center border rounded-md text-gray-700">
+                            <input type="number" id="timer-seconds" placeholder="S" min="0" max="59" value="0" class="w-12 p-1 text-center border rounded-md text-gray-700">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center gap-4">
+                    <button id="timer-start-pause-btn" data-running="false" class="flex-1 py-4 px-6 rounded-full font-bold text-lg shadow-md transition duration-200 btn-primary">
+                        START
+                    </button>
+                    <button id="timer-reset-btn" class="flex-1 py-4 px-6 rounded-full font-bold text-lg shadow-md transition duration-200 bg-gray-200 text-gray-700 hover:bg-gray-300">
+                        RESET
+                    </button>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- SUB-VIEW C: STOPWATCH (Functional) -->
+            <!-- ============================================== -->
+            <div id="subview-stopwatch" class="subview hidden">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Stopwatch</h2>
+
+                <div class="text-center mb-6 p-3 rounded-xl bg-gray-50 border-2 border-gray-200">
+                    <label for="challenge-name" class="font-bold text-sm text-gray-600 mr-2 block mb-2">
+                        Activity Name:
+                    </label>
+                    <input type="text" id="challenge-name" value="Quick Sprint" class="w-full p-2 rounded-lg text-center font-mono border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary transition text-gray-700" placeholder="e.g., Workout Interval" />
+                    <p id="storage-status" class="text-xs mt-2 text-gray-400">Data saved locally using localStorage.</p>
+                </div>
+
+                <div id="stopwatch-display" class="timer-display text-4xl md:text-5xl text-center text-primary bg-white p-6 rounded-2xl shadow-xl mb-8 border-2 border-primary select-none transition-all duration-300">
+                    00:00:00.00
+                </div>
+                <p id="pb-status" class="text-sm mt-2 text-center text-gray-500 mb-4">PB: Loading...</p>
+                <div class="text-center mb-4">
+                    <button id="load-challenge-btn" class="py-1 px-4 rounded-full font-medium text-xs shadow-sm bg-gray-300 text-gray-700 hover:bg-gray-400 active:scale-95 transition">
+                        Load Personal Best (PB)
+                    </button>
+                </div>
+
+                <div class="flex justify-center gap-4 mb-8">
+                    <button id="lap-btn" class="w-1/3 py-4 rounded-full font-bold text-lg shadow-md transform transition duration-200 hover:scale-[1.02] active:scale-95 text-gray-700 bg-gray-200 hover:bg-gray-300" disabled>
+                        LAP
+                    </button>
+                    <button id="stopwatch-start-pause-btn" class="w-2/3 py-4 rounded-full font-bold text-lg shadow-lg transform transition duration-200 hover:scale-[1.02] active:scale-95 text-white btn-primary" data-running="false">
+                        START
+                    </button>
+                </div>
+
+                <div class="relative flex justify-center gap-4">
+                    <button id="finish-btn" class="flex-1 py-3 px-6 rounded-full font-bold text-md shadow-md transform transition duration-200 text-white bg-secondary hover:bg-opacity-90" title="Stops the clock and records time against Personal Best">
+                        FINISH
+                    </button>
+                    <button id="stopwatch-reset-btn" class="absolute top-0 left-0 w-full py-3 px-6 rounded-full font-bold text-md shadow-md transform transition duration-200 text-gray-700 bg-gray-200 hidden" title="Resets the clock to zero without recording a time">
+                        RESET
+                    </button>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-lg font-bold text-gray-800 mb-3 border-b-2 pb-1">Lap History</h3>
+                    <ul id="lap-list" class="space-y-2 max-h-48 overflow-y-auto p-1 bg-white rounded-lg border">
+                        <li class="text-center text-sm text-gray-500 p-2">No laps recorded.</li>
+                    </ul>
+                </div>
+            </div>
+            <!-- End Subview Stopwatch -->
+
+        </div>
+        <!-- End view-clock -->
+
+
+        <!-- ============================================== -->
+        <!-- VIEW 2: SCHEDULE (Functional Task List) -->
+        <!-- ============================================== -->
+        <div id="view-schedule" class="view hidden">
+            <header class="flex justify-between items-center mb-6 border-b pb-2">
+                <h2 class="text-3xl font-bold text-gray-800">Schedule & Tasks 📅</h2>
+                <button id="add-task-btn" class="py-2 px-4 rounded-full text-white btn-primary font-semibold shadow-md">
+                    <i data-lucide="plus" class="w-5 h-5 inline mr-1"></i> Add Task
+                </button>
+            </header>
+
+            <div id="schedule-stats" class="p-4 bg-primary rounded-xl text-white mb-6 shadow-crimson">
+                <p id="tasks-pending-count" class="text-4xl font-bold">0</p>
+                <p class="text-sm opacity-80">Pending Tasks</p>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-3">Today's Focus</h3>
+            <ul id="schedule-list" class="space-y-3">
+                <li class="text-center text-gray-500">Loading tasks...</li>
+            </ul>
+        </div>
+
+        <!-- VIEW 6: ADD/EDIT SCHEDULE TASK -->
+        <div id="view-schedule-set" class="view hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Add New Task 📝</h2>
+
+            <input type="hidden" id="task-id-input">
+            <div class="space-y-4">
+                <label class="block">
+                    <span class="text-gray-700 font-semibold block mb-1">Task Title</span>
+                    <input type="text" id="task-title-input" placeholder="e.g., Finish Project Report" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+                </label>
+                <label class="block">
+                    <span class="text-gray-700 font-semibold block mb-1">Due Date</span>
+                    <input type="date" id="task-date-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+                </label>
+                <label class="block">
+                    <span class="text-gray-700 font-semibold block mb-1">Time (Optional)</span>
+                    <input type="time" id="task-time-input" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition">
+                </label>
+            </div>
+
+            <div class="flex justify-center gap-4 mt-8">
+                <button onclick="navigateTo('view-schedule')" class="flex-1 py-3 rounded-full font-bold text-lg shadow-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition">Cancel</button>
+                <button id="save-task-btn" class="flex-1 py-3 rounded-full font-bold text-lg shadow-md btn-primary">Save Task</button>
+            </div>
+        </div>
+
+
+        <!-- ============================================== -->
+        <!-- VIEW 3: ALARM LIST (Functional) -->
+        <!-- ============================================== -->
+        <div id="view-alarm-list" class="view hidden">
+            <header class="flex justify-between items-center mb-6 border-b pb-2">
+                <h2 class="text-3xl font-bold text-gray-800">Alarms 🔔</h2>
+                <button onclick="navigateTo('view-alarm-set')" class="py-2 px-4 rounded-full text-white btn-primary font-semibold hover:bg-opacity-90 transition shadow-md">
+                    <i data-lucide="plus" class="w-5 h-5 inline mr-1"></i> New
+                </button>
+            </header>
+
+            <ul id="alarms-list" class="space-y-4">
+                <li class="text-center text-gray-500">Loading alarms...</li>
+            </ul>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- VIEW 4: ALARM SET (Functional) -->
+        <!-- ============================================== -->
+        <div id="view-alarm-set" class="view hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Set New Alarm ⚙️</h2>
+
+            <input type="hidden" id="alarm-id-input">
+            <div class="text-center mb-8">
+                <input type="time" id="alarm-time-input" class="text-6xl font-extrabold text-primary border-4 border-primary rounded-xl p-4 w-full text-center timer-display focus:ring-4 focus:ring-primary/50" value="07:00">
+            </div>
+
+            <div class="space-y-4">
+                <label class="block">
+                    <span class="text-gray-700 font-semibold block mb-1">Label</span>
+                    <input type="text" id="alarm-label-input" placeholder="e.g., Morning Run" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary transition">
+                </label>
+                <label class="block">
+                    <span class="text-gray-700 font-semibold block mb-1">Repeat Days</span>
+                    <div id="alarm-repeat-days" class="flex justify-between mt-1 p-2 bg-gray-100 rounded-lg">
+                        <button data-day="Mon" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">M</button>
+                        <button data-day="Tue" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">T</button>
+                        <button data-day="Wed" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">W</button>
+                        <button data-day="Thu" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">T</button>
+                        <button data-day="Fri" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">F</button>
+                        <button data-day="Sat" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">S</button>
+                        <button data-day="Sun" class="day-btn w-8 h-8 rounded-full bg-gray-300 text-gray-600 font-bold text-sm">S</button>
+                    </div>
+                </label>
+            </div>
+
+            <div class="flex justify-center gap-4 mt-8">
+                <button onclick="navigateTo('view-alarm-list')" class="flex-1 py-3 rounded-full font-bold text-lg shadow-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition">Cancel</button>
+                <button id="save-alarm-btn" class="flex-1 py-3 rounded-full font-bold text-lg shadow-md btn-primary">Save Alarm</button>
+            </div>
+        </div>
+
+
+        <!-- ============================================== -->
+        <!-- VIEW 5: SETTINGS (Profile Page) -->
+        <!-- ============================================== -->
+        <div id="view-settings" class="view hidden">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6 border-b pb-2">Settings & Profile 👤</h2>
+
+            <!-- User Profile Mock -->
+            <div class="text-center mb-8 p-6 bg-gray-50 rounded-xl shadow-md">
+                <div class="w-24 h-24 rounded-full bg-primary text-white text-4xl font-bold mx-auto flex items-center justify-center mb-3">
+                    U
+                </div>
+                <p class="text-xl font-bold text-gray-800">App User</p>
+                <p id="user-id-display" class="text-sm text-gray-500">Local Storage is active.</p>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border-l-4 border-primary">
+                    <span class="font-semibold text-gray-700">Theme Mode</span>
+                    <span class="py-1 px-3 rounded-full bg-primary text-white text-sm">Crimson/White (Fixed)</span>
+                </div>
+                <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border-l-4 border-secondary">
+                    <span class="font-semibold text-gray-700">Notifications</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" value="" class="sr-only peer" checked disabled>
+                        <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm border-l-4 border-gray-300">
+                    <span class="font-semibold text-gray-700">Time Format</span>
+                    <span class="text-sm text-gray-500">24-Hour (Default)</span>
+                </div>
+            </div>
+
+            <button onclick="clearLocalStorage()" class="w-full mt-8 py-3 rounded-full font-bold text-lg shadow-md bg-red-500 text-white hover:bg-red-600 transition">
+                Clear All Local Data
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Custom Modal/Message Box Structure (Replacing alert/confirm) -->
+    <div id="custom-modal-backdrop" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-[100] hidden transition-opacity duration-300 flex items-center justify-center p-4">
+        <div id="custom-modal-content" class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-xs transform transition-transform duration-300 scale-95">
+            <h3 id="modal-title" class="text-xl font-bold mb-3 text-gray-800">Alert</h3>
+            <p id="modal-message" class="text-gray-700 mb-6">Message content.</p>
+            <div id="modal-actions" class="flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="py-2 px-4 rounded-full bg-gray-200 text-gray-700 font-semibold hidden">Cancel</button>
+                <button id="modal-confirm-btn" class="py-2 px-4 rounded-full text-white font-semibold btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast/Notification Area -->
+    <div id="toast-container" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[101] w-full max-w-xs space-y-2">
+        <!-- Toasts will be injected here -->
+    </div>
+
+    <!-- --- FIXED BOTTOM NAVIGATION BAR --- -->
+    <footer class="fixed-bottom-nav bg-white shadow-2xl border-t border-gray-200 rounded-t-xl">
+        <div class="flex justify-around items-center h-20">
+            <button data-view="view-clock" onclick="navigateTo('view-clock')" class="nav-icon active flex flex-col items-center text-gray-400 hover:text-primary transition duration-150">
+                <i data-lucide="clock" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Clock</span>
+            </button>
+            <button data-view="view-schedule" onclick="navigateTo('view-schedule')" class="nav-icon flex flex-col items-center text-gray-400 hover:text-primary transition duration-150">
+                <i data-lucide="calendar-check" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Schedule</span>
+            </button>
+            <button data-view="view-alarm-list" onclick="navigateTo('view-alarm-list')" class="nav-icon flex flex-col items-center text-gray-400 hover:text-primary transition duration-150">
+                <i data-lucide="bell" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Alarm</span>
+            </button>
+            <button data-view="view-settings" onclick="navigateTo('view-settings')" class="nav-icon flex flex-col items-center text-gray-400 hover:text-primary transition duration-150">
+                <i data-lucide="settings" class="w-6 h-6"></i>
+                <span class="text-xs mt-1">Settings</span>
+            </button>
+        </div>
+    </footer>
+
+
+    <script>
+        // Use crypto.randomUUID() for generating unique IDs for local data
+        if (typeof crypto.randomUUID !== 'function') {
+            crypto.randomUUID = () => 'local-' + Math.random().toString(36).substring(2, 9);
+        }
+
+        // --- Clock/Date State ---
+        const currentTimeDisplay = document.getElementById('current-time-display');
+        const currentDateDisplay = document.getElementById('current-date-display');
+        const timeFormatOptions = {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h12'
+        };
+        const dateFormatOptions = {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        };
+
+        const updateClock = () => {
+            const now = new Date();
+            // Remove the AM/PM part if present in 24-hour cycle
+            currentTimeDisplay.textContent = now.toLocaleTimeString('en-US', timeFormatOptions).replace(/\s(A|P)M/g, '');
+            currentDateDisplay.textContent = now.toLocaleDateString('en-US', dateFormatOptions).toUpperCase();
+        };
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call
+
+        // =========================================================================
+        // --- 0. MODAL / TOAST UTILITIES (Replacing alert/confirm) ---
+        // =========================================================================
+
+        const modalBackdrop = document.getElementById('custom-modal-backdrop');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        const modalCancelBtn = document.getElementById('modal-cancel-btn');
+        const toastContainer = document.getElementById('toast-container');
+
+        /**
+         * Shows a non-blocking temporary message (Toast).
+         * @param {string} message 
+         * @param {'success'|'warning'|'error'|'info'|'alarm'} type 
+         */
+        window.showModalMessage = (message, type = 'info') => {
+            let bgColor = 'bg-primary';
+            let icon = 'info';
+
+            switch (type) {
+                case 'success':
+                    bgColor = 'bg-green-500';
+                    icon = 'check-circle';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-500';
+                    icon = 'alert-triangle';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-500';
+                    icon = 'x-octagon';
+                    break;
+                case 'alarm':
+                    bgColor = 'bg-red-500';
+                    icon = 'bell';
+                    break;
+                case 'info':
+                default:
+                    bgColor = 'bg-gray-700';
+                    icon = 'info';
+                    break;
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `p-3 rounded-xl ${bgColor} text-white shadow-xl flex items-center space-x-3 opacity-0 transition-opacity duration-300`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-5 h-5"></i>
+                <p class="text-sm font-medium flex-grow">${message}</p>
+            `;
+
+            toastContainer.prepend(toast);
+            lucide.createIcons();
+
+            // Fade in
+            setTimeout(() => {
+                toast.classList.remove('opacity-0');
+            }, 50);
+
+            // Fade out and remove
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        };
+
+        /**
+         * Shows a blocking confirmation modal.
+         * @param {string} message 
+         * @param {string} title 
+         * @returns {Promise<boolean>}
+         */
+        const showConfirmModal = (message, title = 'Confirm Action') => {
+            return new Promise(resolve => {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                modalConfirmBtn.textContent = 'Confirm';
+                // Use red color for destructive action confirmation
+                modalConfirmBtn.className = 'py-2 px-4 rounded-full text-white font-semibold bg-red-500 hover:bg-red-600 transition';
+                modalCancelBtn.classList.remove('hidden');
+
+                const handleConfirm = () => {
+                    cleanup();
+                    resolve(true);
+                };
+
+                const handleCancel = () => {
+                    cleanup();
+                    resolve(false);
+                };
+
+                const cleanup = () => {
+                    modalConfirmBtn.removeEventListener('click', handleConfirm);
+                    modalCancelBtn.removeEventListener('click', handleCancel);
+                    modalBackdrop.classList.add('hidden');
+                };
+
+                modalConfirmBtn.addEventListener('click', handleConfirm);
+                modalCancelBtn.addEventListener('click', handleCancel);
+
+                modalBackdrop.classList.remove('hidden');
+            });
+        };
+
+        // --- View Navigation Logic ---
+
+        const navIcons = document.querySelectorAll('.nav-icon');
+        const subNavBtns = document.querySelectorAll('.sub-nav-btn');
+
+        window.navigateTo = (viewId) => {
+            document.querySelectorAll('.view').forEach(view => {
+                view.classList.add('hidden');
+            });
+            document.getElementById(viewId).classList.remove('hidden');
+
+            const isPrimaryView = Array.from(navIcons).some(btn => btn.dataset.view === viewId);
+
+            navIcons.forEach(btn => {
+                // Determine which nav icon to highlight. If navigating to a primary view (like schedule), highlight it.
+                // If navigating to a sub-view (like view-alarm-set), keep the parent view's icon (view-alarm-list) highlighted.
+                const parentViewId = viewId === 'view-schedule-set' ? 'view-schedule' : (viewId === 'view-alarm-set' ? 'view-alarm-list' : viewId);
+
+                if (btn.dataset.view === parentViewId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            if (viewId === 'view-clock') {
+                switchSubView('subview-world-clock');
+            } else {
+                // Stop stopwatch/timer when leaving the clock view 
+                if (stopwatchRunning) {
+                    stopwatchPauseTimer();
+                }
+                if (timerRunning) {
+                    timerPause();
+                }
+            }
+        };
+
+        window.switchSubView = (subViewId) => {
+            document.querySelectorAll('.subview').forEach(view => {
+                view.classList.add('hidden');
+            });
+            document.getElementById(subViewId).classList.remove('hidden');
+
+            subNavBtns.forEach(btn => {
+                btn.classList.remove('text-primary', 'border-primary', 'font-bold');
+                btn.classList.add('text-gray-600', 'border-transparent', 'font-medium');
+                if (btn.dataset.subview === subViewId) {
+                    btn.classList.add('text-primary', 'border-primary', 'font-bold');
+                    btn.classList.remove('text-gray-600', 'border-transparent', 'font-medium');
+                }
+            });
+
+            if (subViewId !== 'subview-stopwatch' && stopwatchRunning) {
+                stopwatchPauseTimer();
+            }
+            if (subViewId !== 'subview-timer' && timerRunning) {
+                timerPause();
+            }
+        };
+
+        // =========================================================================
+        // --- LOCAL STORAGE UTILITIES ---
+        // =========================================================================
+
+        const loadLocalData = (key, defaultValue) => {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultValue;
+            } catch (e) {
+                console.error("Error loading localStorage key:", key, e);
+                return defaultValue;
+            }
+        };
+
+        const saveLocalData = (key, data) => {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+            } catch (e) {
+                console.error("Error saving localStorage key:", key, e);
+            }
+        };
+
+        // Overrides the placeholder function in the HTML to use the custom modal
+        window.clearLocalStorage = async() => {
+            const confirmed = await showConfirmModal(
+                "Are you sure you want to clear ALL local Crimson Time data (PBs, Alarms, Tasks)? This action cannot be undone.",
+                "⚠️ Clear All Data"
+            );
+
+            if (confirmed) {
+                localStorage.removeItem('ct_pbs');
+                localStorage.removeItem('ct_alarms');
+                localStorage.removeItem('ct_tasks');
+                localStorage.removeItem('ct_timezones');
+
+                // Reinitialize data
+                loadInitialData();
+                navigateTo('view-settings');
+                showModalMessage("All local data cleared. The app has been reset.", "success");
+            }
+        };
+
+        // =========================================================================
+        // --- 1. STOPWATCH (View 1C) Logic ---
+        // =========================================================================
+
+        let pbTimeMs = Infinity;
+        let stopwatchStartTime;
+        let stopwatchRunning = false;
+        let stopwatchElapsedTime = 0;
+        let stopwatchTimerInterval;
+        let lapCounter = 0;
+        let lapRecords = [];
+        let lastTotalTime = 0;
+
+        const stopwatchDisplay = document.getElementById('stopwatch-display');
+        const stopwatchStartPauseBtn = document.getElementById('stopwatch-start-pause-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const stopwatchResetBtn = document.getElementById('stopwatch-reset-btn');
+        const lapBtn = document.getElementById('lap-btn');
+        const lapList = document.getElementById('lap-list');
+        const challengeNameInput = document.getElementById('challenge-name');
+        const loadChallengeBtn = document.getElementById('load-challenge-btn');
+        const pbStatus = document.getElementById('pb-status');
+
+        const formatTime = (ms) => {
+            if (ms === Infinity) return 'Not Set';
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const milliseconds = Math.floor((ms % 1000) / 10);
+
+            const pad = (num) => String(num).padStart(2, '0');
+            return pad(hours) + ':' + pad(minutes) + ':' + pad(seconds) + '.' + pad(milliseconds);
+        };
+
+        const loadBestTime = () => {
+            pbStatus.textContent = "PB: Loading...";
+            const challengeName = challengeNameInput.value.trim();
+            if (!challengeName) {
+                pbStatus.textContent = "PB: Enter Activity Name";
+                pbTimeMs = Infinity;
+                return;
+            }
+
+            const allPBs = loadLocalData('ct_pbs', {});
+            const pb = allPBs[challengeName] || Infinity;
+
+            pbTimeMs = pb;
+            pbStatus.textContent = 'PB: ' + formatTime(pbTimeMs);
+        };
+
+        const saveBestTime = (newTimeMs) => {
+            const challengeName = challengeNameInput.value.trim();
+            if (!challengeName) return;
+
+            const allPBs = loadLocalData('ct_pbs', {});
+
+            if (newTimeMs < pbTimeMs) {
+                pbTimeMs = newTimeMs;
+                allPBs[challengeName] = newTimeMs;
+                saveLocalData('ct_pbs', allPBs);
+                pbStatus.innerHTML = '<span class="text-primary font-bold">NEW PB! ' + formatTime(pbTimeMs) + ' 🎉</span>';
+                showModalMessage("New Personal Best recorded!", "success");
+            } else {
+                pbStatus.textContent = 'Run Time: ' + formatTime(newTimeMs) + ' (PB: ' + formatTime(pbTimeMs) + ')';
+                showModalMessage("Time recorded. Keep training!", "info");
+            }
+        };
+
+        const stopwatchUpdateDisplay = () => {
+            const currentTime = Date.now();
+            stopwatchElapsedTime = currentTime - stopwatchStartTime;
+            stopwatchDisplay.textContent = formatTime(stopwatchElapsedTime);
+        };
+
+        const stopwatchStartTimer = () => {
+            if (!stopwatchRunning) {
+                if (stopwatchElapsedTime === 0) {
+                    lapCounter = 0;
+                    lapRecords = [];
+                    lastTotalTime = 0;
+                    lapList.innerHTML = '<li class="text-center text-sm text-gray-500 p-2">No laps recorded.</li>';
+                    finishBtn.classList.remove('hidden');
+                    stopwatchResetBtn.classList.add('hidden');
+                    stopwatchDisplay.classList.remove('text-gray-500');
+                }
+
+                stopwatchStartTime = Date.now() - stopwatchElapsedTime;
+                stopwatchTimerInterval = setInterval(stopwatchUpdateDisplay, 10);
+                stopwatchRunning = true;
+
+                stopwatchStartPauseBtn.textContent = 'PAUSE';
+                stopwatchStartPauseBtn.classList.remove('btn-primary');
+                stopwatchStartPauseBtn.classList.add('bg-secondary');
+                lapBtn.disabled = false;
+            } else {
+                stopwatchPauseTimer();
+            }
+        };
+
+        const stopwatchPauseTimer = () => {
+            if (stopwatchRunning) {
+                clearInterval(stopwatchTimerInterval);
+                stopwatchRunning = false;
+
+                stopwatchStartPauseBtn.textContent = 'RESUME';
+                stopwatchStartPauseBtn.classList.remove('bg-secondary');
+                stopwatchStartPauseBtn.classList.add('btn-primary');
+                lapBtn.disabled = true;
+                finishBtn.classList.remove('hidden');
+                stopwatchResetBtn.classList.add('hidden');
+                stopwatchDisplay.classList.add('text-gray-500');
+            }
+        };
+
+        const stopwatchFinishTimer = () => {
+            if (!stopwatchRunning && stopwatchElapsedTime === 0) return;
+
+            clearInterval(stopwatchTimerInterval);
+            stopwatchRunning = false;
+
+            if (stopwatchElapsedTime > 0) {
+                saveBestTime(stopwatchElapsedTime);
+            }
+
+            // UI updates after finish
+            stopwatchStartPauseBtn.textContent = 'START';
+            stopwatchStartPauseBtn.classList.remove('bg-secondary');
+            stopwatchStartPauseBtn.classList.add('btn-primary');
+            lapBtn.disabled = true;
+            finishBtn.classList.add('hidden'); // Hide finish
+            stopwatchResetBtn.classList.remove('hidden'); // Show final reset
+            stopwatchDisplay.classList.remove('text-primary');
+            stopwatchDisplay.classList.add('text-gray-500');
+        };
+
+        const stopwatchResetTimer = () => {
+            clearInterval(stopwatchTimerInterval);
+            stopwatchRunning = false;
+            stopwatchElapsedTime = 0;
+            lapCounter = 0;
+            lapRecords = [];
+            lastTotalTime = 0;
+
+            stopwatchDisplay.textContent = '00:00:00.00';
+            stopwatchStartPauseBtn.textContent = 'START';
+            stopwatchStartPauseBtn.classList.remove('bg-secondary');
+            stopwatchStartPauseBtn.classList.add('btn-primary');
+            lapBtn.disabled = true;
+            stopwatchDisplay.classList.remove('text-gray-500');
+            stopwatchDisplay.classList.add('text-primary');
+
+            finishBtn.classList.remove('hidden'); // Show finish again
+            stopwatchResetBtn.classList.add('hidden'); // Hide reset
+
+            lapList.innerHTML = '<li class="text-center text-sm text-gray-500 p-2">No laps recorded.</li>';
+            loadBestTime(); // Reload PB status
+        };
+
+        const recordLap = () => {
+            if (!stopwatchRunning) return;
+
+            lapCounter++;
+            const totalTime = stopwatchElapsedTime;
+            const lapTime = totalTime - lastTotalTime;
+            lastTotalTime = totalTime;
+
+            const lapRecord = {
+                number: lapCounter,
+                total: formatTime(totalTime),
+                lap: formatTime(lapTime)
+            };
+            lapRecords.unshift(lapRecord); // Add to the start
+
+            // Render Laps
+            let html = '';
+            lapRecords.forEach(record => {
+                html += `
+                    <li class="flex justify-between items-center p-2 rounded-md ${record.number % 2 === 0 ? 'bg-gray-50' : 'bg-white'}">
+                        <span class="font-mono text-sm font-semibold text-gray-700">LAP ${record.number.toString().padStart(2, '0')}</span>
+                        <div class="text-right">
+                            <span class="font-mono text-xs text-primary block">${record.lap}</span>
+                            <span class="font-mono text-xs text-gray-500 block">Total: ${record.total}</span>
+                        </div>
+                    </li>`;
+            });
+            lapList.innerHTML = html;
+        };
+
+        // Event Listeners for Stopwatch
+        stopwatchStartPauseBtn.addEventListener('click', stopwatchStartTimer);
+        stopwatchResetBtn.addEventListener('click', stopwatchResetTimer);
+        finishBtn.addEventListener('click', stopwatchFinishTimer);
+        lapBtn.addEventListener('click', recordLap);
+        challengeNameInput.addEventListener('change', loadBestTime);
+        loadChallengeBtn.addEventListener('click', loadBestTime);
+
+
+        // =========================================================================
+        // --- 2. TIMER (View 1B) Logic ---
+        // =========================================================================
+
+        let timerInterval;
+        let timerRunning = false;
+        let totalTimeMs = 300000; // Default 5 minutes
+        let remainingTimeMs = totalTimeMs;
+
+        const timerDisplayTime = document.getElementById('timer-display-time');
+        const timerHoursInput = document.getElementById('timer-hours');
+        const timerMinutesInput = document.getElementById('timer-minutes');
+        const timerSecondsInput = document.getElementById('timer-seconds');
+        const timerStartPauseBtn = document.getElementById('timer-start-pause-btn');
+        const timerResetBtn = document.getElementById('timer-reset-btn');
+
+        const updateTimerDisplay = () => {
+            if (remainingTimeMs < 0) remainingTimeMs = 0;
+
+            const totalSeconds = Math.floor(remainingTimeMs / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const pad = (num) => String(num).padStart(2, '0');
+            timerDisplayTime.textContent = pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
+
+            if (remainingTimeMs === 0) {
+                timerComplete();
+            }
+        };
+
+        const setTimeFromInputs = () => {
+            const h = parseInt(timerHoursInput.value) || 0;
+            const m = parseInt(timerMinutesInput.value) || 0;
+            const s = parseInt(timerSecondsInput.value) || 0;
+            const newTimeMs = (h * 3600 + m * 60 + s) * 1000;
+
+            if (!timerRunning && newTimeMs > 0) {
+                totalTimeMs = newTimeMs;
+                remainingTimeMs = totalTimeMs;
+                updateTimerDisplay();
+                // Hide inputs when time is set/ready to run
+                document.querySelector('#timer-display-circle .flex').classList.add('hidden');
+            } else if (!timerRunning && newTimeMs === 0) {
+                document.querySelector('#timer-display-circle .flex').classList.remove('hidden');
+            }
+        };
+
+        const timerStart = () => {
+            setTimeFromInputs();
+            if (remainingTimeMs <= 0) {
+                showModalMessage("Please set a time greater than zero.", "warning");
+                return;
+            }
+
+            if (!timerRunning) {
+                timerInterval = setInterval(() => {
+                    remainingTimeMs -= 1000;
+                    updateTimerDisplay();
+                }, 1000);
+                timerRunning = true;
+                timerStartPauseBtn.textContent = 'PAUSE';
+                timerStartPauseBtn.classList.remove('btn-primary');
+                timerStartPauseBtn.classList.add('bg-secondary');
+                document.querySelector('#timer-display-circle .flex').classList.add('hidden'); // Hide inputs
+            } else {
+                timerPause();
+            }
+        };
+
+        const timerPause = () => {
+            if (timerRunning) {
+                clearInterval(timerInterval);
+                timerRunning = false;
+                timerStartPauseBtn.textContent = 'RESUME';
+                timerStartPauseBtn.classList.remove('bg-secondary');
+                timerStartPauseBtn.classList.add('btn-primary');
+            }
+        };
+
+        const timerReset = () => {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            remainingTimeMs = totalTimeMs;
+            updateTimerDisplay();
+            timerStartPauseBtn.textContent = 'START';
+            timerStartPauseBtn.classList.remove('bg-secondary');
+            timerStartPauseBtn.classList.add('btn-primary');
+            document.querySelector('#timer-display-circle .flex').classList.remove('hidden'); // Show inputs
+        };
+
+        const timerComplete = () => {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            remainingTimeMs = totalTimeMs; // Reset to original set time
+            updateTimerDisplay();
+            timerStartPauseBtn.textContent = 'START';
+            timerStartPauseBtn.classList.remove('bg-secondary');
+            timerStartPauseBtn.classList.add('btn-primary');
+            document.querySelector('#timer-display-circle .flex').classList.remove('hidden');
+
+            showModalMessage("Timer Finished! Time's up!", "alarm");
+        };
+
+        // Timer Event Listeners
+        timerStartPauseBtn.addEventListener('click', timerStart);
+        timerResetBtn.addEventListener('click', timerReset);
+        [timerHoursInput, timerMinutesInput, timerSecondsInput].forEach(input => {
+            input.addEventListener('input', setTimeFromInputs);
+        });
+
+        // Initial timer setup
+        setTimeFromInputs();
+
+
+        // =========================================================================
+        // --- 3. WORLD CLOCK (View 1A) Logic ---
+        // =========================================================================
+
+        const worldClockList = document.getElementById('world-clock-list');
+        const timezoneInput = document.getElementById('timezone-input');
+        const addTimezoneBtn = document.getElementById('add-timezone-btn');
+
+        let worldClocks = [];
+
+        const renderWorldClocks = () => {
+            const now = new Date();
+            if (worldClocks.length === 0) {
+                worldClockList.innerHTML = '<li class="text-center text-gray-500 p-2">No custom time zones added.</li>';
+                return;
+            }
+
+            worldClockList.innerHTML = worldClocks.map(tz => {
+                let time;
+                let date;
+                let offset;
+                try {
+                    // Get time/date in the specified timezone
+                    time = now.toLocaleTimeString('en-US', {
+                        timeZone: tz,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hourCycle: 'h12'
+                    });
+                    date = now.toLocaleDateString('en-US', {
+                        timeZone: tz,
+                        month: 'short',
+                        day: 'numeric'
+                    }).toUpperCase();
+
+                    // Approximate offset calculation for display
+                    const localTime = now.getTime();
+                    // Get UTC time of the 'now' moment
+                    const targetTime = new Date(localTime + now.getTimezoneOffset() * 60000);
+                    // Calculate the hour difference between UTC and the target timezone's time at the UTC moment
+                    const targetOffsetHour = new Date(targetTime.toLocaleString('en-US', {
+                        timeZone: tz,
+                        hour: 'numeric',
+                        hourCycle: 'h12'
+                    })).getHours();
+                    const localOffsetHour = targetTime.getHours();
+
+                    // This calculation is tricky without a proper library, but for basic display:
+                    let diffHours = targetOffsetHour - localOffsetHour;
+
+                    // Simple timezone name extraction
+                    const city = tz.split('/').pop().replace(/_/g, ' ');
+
+                    offset = diffHours !== 0 ? (diffHours > 0 ? `+${diffHours}` : `${diffHours}`) : 'Local';
+                    if (tz === Intl.DateTimeFormat().resolvedOptions().timeZone) offset = 'Local';
+
+
+                } catch (e) {
+                    time = 'Invalid TZ';
+                    date = '---';
+                    offset = '---';
+                    console.error("Invalid Timezone:", tz);
+                }
+
+                const city = tz.split('/').pop().replace(/_/g, ' ');
+
+                return `
+                    <li class="flex justify-between items-center p-3 bg-white rounded-xl shadow-sm border-l-4 border-primary/50">
+                        <div>
+                            <p class="text-xl font-bold text-gray-800">${time}</p>
+                            <p class="text-xs text-gray-500">${city} (${offset})</p>
+                        </div>
+                        <button onclick="removeTimeZone('${tz}')" class="text-gray-400 hover:text-red-500 transition">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </li>
+                `;
+            }).join('');
+
+            // Re-render lucide icons after injecting HTML
+            lucide.createIcons();
+        };
+
+        const loadWorldClocks = () => {
+            // Include user's local timezone as a default
+            const defaultTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            let initialClocks = loadLocalData('ct_timezones', ['Europe/London', 'Asia/Tokyo']);
+
+            // Ensure local timezone is always included first if not present
+            if (!initialClocks.includes(defaultTz)) {
+                initialClocks.unshift(defaultTz);
+            }
+
+            worldClocks = initialClocks.filter((tz, index, self) => self.indexOf(tz) === index); // Deduplicate
+            renderWorldClocks();
+        };
+
+        const addTimeZone = () => {
+            const tz = timezoneInput.value.trim();
+            if (!tz) {
+                showModalMessage("Please enter a valid time zone string.", "warning");
+                return;
+            }
+
+            // Simple validation: check if the input is a valid IANA timezone string
+            try {
+                // Attempt to format a date using the timezone. If it fails, it throws a RangeError.
+                new Date().toLocaleTimeString('en-US', {
+                    timeZone: tz
+                });
+            } catch (e) {
+                showModalMessage("Invalid time zone format. Please use IANA format (e.g., 'America/New_York').", "error");
+                return;
+            }
+
+            if (!worldClocks.includes(tz)) {
+                worldClocks.push(tz);
+                saveLocalData('ct_timezones', worldClocks);
+                timezoneInput.value = '';
+                renderWorldClocks();
+                showModalMessage(`Added timezone: ${tz.split('/').pop().replace(/_/g, ' ')}`, "success");
+            } else {
+                showModalMessage("Time zone already exists.", "info");
+            }
+        };
+
+        window.removeTimeZone = (tzToRemove) => {
+            worldClocks = worldClocks.filter(tz => tz !== tzToRemove);
+            saveLocalData('ct_timezones', worldClocks);
+            renderWorldClocks();
+            showModalMessage("Time zone removed.", "info");
+        }
+
+        // World Clock Event Listeners & Interval
+        addTimezoneBtn.addEventListener('click', addTimeZone);
+
+        setInterval(renderWorldClocks, 60000); // Update every minute
+
+
+        // =========================================================================
+        // --- 4. SCHEDULE/TASKS (View 2 & 6) Logic ---
+        // =========================================================================
+
+        const scheduleList = document.getElementById('schedule-list');
+        const addTaskBtn = document.getElementById('add-task-btn');
+        const saveTaskBtn = document.getElementById('save-task-btn');
+        const tasksPendingCount = document.getElementById('tasks-pending-count');
+
+        // Task Form Inputs
+        const taskIdInput = document.getElementById('task-id-input');
+        const taskTitleInput = document.getElementById('task-title-input');
+        const taskDateInput = document.getElementById('task-date-input');
+        const taskTimeInput = document.getElementById('task-time-input');
+
+        let tasks = [];
+
+        const renderTasks = () => {
+            // Sort: Incomplete tasks first, then by date, then completed last
+            tasks.sort((a, b) => {
+                if (a.completed !== b.completed) {
+                    return a.completed ? 1 : -1; // Incomplete first
+                }
+                return new Date(a.date) - new Date(b.date); // Then by date
+            });
+
+            if (tasks.length === 0) {
+                scheduleList.innerHTML = '<li class="text-center text-gray-500 p-3">You have no tasks scheduled. Great job!</li>';
+                tasksPendingCount.textContent = '0';
+                return;
+            }
+
+            const pendingTasks = tasks.filter(t => !t.completed).length;
+            tasksPendingCount.textContent = pendingTasks;
+
+            scheduleList.innerHTML = tasks.map(task => {
+                const isCompleted = task.completed;
+                const completedClasses = isCompleted ? 'opacity-50 line-through bg-gray-50' : 'shadow-md hover:shadow-lg bg-white';
+                const dateDisplay = task.date ? new Date(task.date + 'T00:00:00').toLocaleDateString() : 'No Date';
+                const timeDisplay = task.time || '';
+
+                const today = new Date(new Date().setHours(0, 0, 0, 0));
+                const taskDate = new Date(task.date);
+
+                let dateBadgeClass = 'bg-gray-200 text-gray-700';
+                if (!isCompleted) {
+                    if (taskDate.getTime() < today.getTime()) {
+                        dateBadgeClass = 'bg-red-500 text-white'; // Overdue
+                    } else if (taskDate.toDateString() === today.toDateString()) {
+                        dateBadgeClass = 'bg-primary text-white'; // Today
+                    } else {
+                        dateBadgeClass = 'bg-blue-100 text-blue-700';
+                    }
+                }
+
+                return `
+                    <li id="task-${task.id}" class="flex items-center p-4 rounded-xl transition duration-150 border border-gray-200 ${completedClasses}">
+                        <input type="checkbox" onchange="toggleTaskCompletion('${task.id}')" ${isCompleted ? 'checked' : ''} 
+                               class="w-5 h-5 text-primary border-gray-300 rounded focus:ring-primary mr-4 checked:bg-primary">
+                        <div class="flex-grow">
+                            <p class="font-semibold text-gray-800">${task.title}</p>
+                            <span class="text-xs text-gray-500 ${task.time ? 'mt-1 block' : ''}">
+                                <span class="py-0.5 px-2 rounded-full text-xs font-medium ${dateBadgeClass}">${dateDisplay}</span> 
+                                ${timeDisplay}
+                            </span>
+                        </div>
+                        <div class="flex space-x-2">
+                             <button onclick="editTask('${task.id}')" class="p-1 text-gray-500 hover:text-primary transition">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteTask('${task.id}')" class="p-1 text-gray-500 hover:text-red-500 transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        };
+
+        const loadTasks = () => {
+            tasks = loadLocalData('ct_tasks', []);
+            renderTasks();
+        };
+
+        const saveTask = () => {
+            const id = taskIdInput.value;
+            const title = taskTitleInput.value.trim();
+            const date = taskDateInput.value;
+            const time = taskTimeInput.value;
+
+            if (!title || !date) {
+                showModalMessage("Task title and due date are required.", "warning");
+                return;
+            }
+
+            const existingTaskIndex = tasks.findIndex(t => t.id === id);
+
+            if (existingTaskIndex !== -1) {
+                // Update existing task
+                tasks[existingTaskIndex].title = title;
+                tasks[existingTaskIndex].date = date;
+                tasks[existingTaskIndex].time = time;
+                showModalMessage("Task updated successfully!", "success");
+            } else {
+                // Add new task
+                const newTask = {
+                    id: crypto.randomUUID(),
+                    title: title,
+                    date: date,
+                    time: time,
+                    completed: false,
+                    createdAt: Date.now()
+                };
+                tasks.push(newTask);
+                showModalMessage("New task added!", "success");
+            }
+
+            saveLocalData('ct_tasks', tasks);
+            renderTasks();
+            navigateTo('view-schedule');
+        };
+
+        window.toggleTaskCompletion = (taskId) => {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                saveLocalData('ct_tasks', tasks);
+                renderTasks();
+                showModalMessage(task.completed ? `Task "${task.title}" completed!` : `Task "${task.title}" reactivated.`, "info");
+            }
+        };
+
+        window.editTask = (taskId) => {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                taskIdInput.value = task.id;
+                taskTitleInput.value = task.title;
+                taskDateInput.value = task.date;
+                taskTimeInput.value = task.time;
+                document.querySelector('#view-schedule-set h2').textContent = 'Edit Task ✏️';
+                navigateTo('view-schedule-set');
+            }
+        };
+
+        window.deleteTask = (taskId) => {
+            tasks = tasks.filter(t => t.id !== taskId);
+            saveLocalData('ct_tasks', tasks);
+            renderTasks();
+            showModalMessage("Task deleted.", "info");
+        };
+
+        addTaskBtn.addEventListener('click', () => {
+            // Clear form for new task
+            taskIdInput.value = '';
+            taskTitleInput.value = '';
+            taskDateInput.value = '';
+            taskTimeInput.value = '';
+            document.querySelector('#view-schedule-set h2').textContent = 'Add New Task 📝';
+            navigateTo('view-schedule-set');
+        });
+
+        saveTaskBtn.addEventListener('click', saveTask);
+
+
+        // =========================================================================
+        // --- 5. ALARM (View 3 & 4) Logic ---
+        // =========================================================================
+
+        const alarmsList = document.getElementById('alarms-list');
+        // Alarm Form Inputs
+        const alarmIdInput = document.getElementById('alarm-id-input');
+        const alarmTimeInput = document.getElementById('alarm-time-input');
+        const alarmLabelInput = document.getElementById('alarm-label-input');
+        const dayButtons = document.querySelectorAll('.day-btn');
+        const saveAlarmBtn = document.getElementById('save-alarm-btn');
+
+        let alarms = [];
+        const dayMap = {
+            'Sun': 0,
+            'Mon': 1,
+            'Tue': 2,
+            'Wed': 3,
+            'Thu': 4,
+            'Fri': 5,
+            'Sat': 6
+        };
+
+        const renderAlarms = () => {
+            // Sort by time, active ones first
+            alarms.sort((a, b) => {
+                if (a.active !== b.active) {
+                    return a.active ? -1 : 1; // Active first
+                }
+                return a.time.localeCompare(b.time);
+            });
+
+            if (alarms.length === 0) {
+                alarmsList.innerHTML = '<li class="text-center text-gray-500 p-3">No alarms set.</li>';
+                return;
+            }
+
+            alarmsList.innerHTML = alarms.map(alarm => {
+                const isActive = alarm.active;
+                const activeClass = isActive ? 'bg-white shadow-lg border-primary' : 'bg-gray-100 border-gray-300';
+                const timeClass = isActive ? 'text-primary' : 'text-gray-500';
+                const daysDisplay = alarm.days.length > 0 ? alarm.days.join(', ') : 'Once';
+
+                return `
+                    <li class="flex justify-between items-center p-4 rounded-xl border ${activeClass} transition duration-150">
+                        <div class="flex-grow">
+                            <p class="text-4xl font-extrabold ${timeClass} timer-display">${alarm.time}</p>
+                            <p class="text-sm text-gray-600 mt-1">${alarm.label || 'Alarm'}</p>
+                            <p class="text-xs text-gray-400 mt-0.5">${daysDisplay}</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                             <button onclick="editAlarm('${alarm.id}')" class="p-1 text-gray-500 hover:text-primary transition">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                             <button onclick="deleteAlarm('${alarm.id}')" class="p-1 text-gray-500 hover:text-red-500 transition">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" onchange="toggleAlarmActive('${alarm.id}')" ${isActive ? 'checked' : ''} class="sr-only peer">
+                                <div class="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+
+            lucide.createIcons();
+        };
+
+        const loadAlarms = () => {
+            alarms = loadLocalData('ct_alarms', []);
+            renderAlarms();
+        };
+
+        const setupDaySelection = (selectedDays) => {
+            dayButtons.forEach(btn => {
+                const day = btn.dataset.day;
+                btn.classList.remove('bg-primary', 'text-white');
+                btn.classList.add('bg-gray-300', 'text-gray-600');
+
+                if (selectedDays.includes(day)) {
+                    btn.classList.add('bg-primary', 'text-white');
+                    btn.classList.remove('bg-gray-300', 'text-gray-600');
+                }
+            });
+        };
+
+        window.toggleDay = (btn) => {
+            const day = btn.dataset.day;
+
+            const daysFromUI = getSelectedDaysFromUI();
+            const index = daysFromUI.indexOf(day);
+
+            if (index > -1) {
+                daysFromUI.splice(index, 1);
+            } else {
+                daysFromUI.push(day);
+            }
+
+            // Re-sort days based on their index in the dayMap, starting Sunday (0)
+            const sortedDays = daysFromUI.sort((a, b) => dayMap[a] - dayMap[b]);
+
+            setupDaySelection(sortedDays);
+        };
+
+        const getSelectedDaysFromUI = () => {
+            const selectedDays = [];
+            dayButtons.forEach(btn => {
+                if (btn.classList.contains('bg-primary')) {
+                    selectedDays.push(btn.dataset.day);
+                }
+            });
+            return selectedDays;
+        }
+
+        const saveAlarm = () => {
+            const id = alarmIdInput.value;
+            const time = alarmTimeInput.value;
+            const label = alarmLabelInput.value.trim();
+            const days = getSelectedDaysFromUI();
+
+            if (!time) {
+                showModalMessage("Alarm time is required.", "warning");
+                return;
+            }
+
+            const existingAlarmIndex = alarms.findIndex(a => a.id === id);
+
+            // Default to active on creation/update
+            const active = existingAlarmIndex !== -1 ? alarms[existingAlarmIndex].active : true;
+
+            const newAlarm = {
+                id: id || crypto.randomUUID(),
+                time: time,
+                label: label,
+                days: days,
+                active: active,
+                // Add storage for tracking last trigger time
+                triggeredAt: existingAlarmIndex !== -1 ? alarms[existingAlarmIndex].triggeredAt : 0
+            };
+
+            if (existingAlarmIndex !== -1) {
+                alarms[existingAlarmIndex] = newAlarm;
+                showModalMessage("Alarm updated successfully!", "success");
+            } else {
+                alarms.push(newAlarm);
+                showModalMessage("New alarm set!", "success");
+            }
+
+            saveLocalData('ct_alarms', alarms);
+            renderAlarms();
+            navigateTo('view-alarm-list');
+        };
+
+        window.editAlarm = (alarmId) => {
+            const alarm = alarms.find(a => a.id === alarmId);
+            if (alarm) {
+                alarmIdInput.value = alarm.id;
+                alarmTimeInput.value = alarm.time;
+                alarmLabelInput.value = alarm.label;
+                setupDaySelection(alarm.days);
+                navigateTo('view-alarm-set');
+            }
+        };
+
+        window.deleteAlarm = (alarmId) => {
+            alarms = alarms.filter(a => a.id !== alarmId);
+            saveLocalData('ct_alarms', alarms);
+            renderAlarms();
+            showModalMessage("Alarm deleted.", "info");
+        };
+
+        window.toggleAlarmActive = (alarmId) => {
+            const alarm = alarms.find(a => a.id === alarmId);
+            if (alarm) {
+                alarm.active = !alarm.active;
+                saveLocalData('ct_alarms', alarms);
+                renderAlarms();
+                showModalMessage(`Alarm "${alarm.label || alarm.time}" is now ${alarm.active ? 'active' : 'inactive'}.`, "info");
+            }
+        }
+
+        // Handle alarm day button clicks
+        dayButtons.forEach(btn => {
+            btn.addEventListener('click', () => window.toggleDay(btn));
+        });
+
+        // Save alarm button listener
+        saveAlarmBtn.addEventListener('click', saveAlarm);
+
+        // Alarm Check Loop
+        const checkAlarms = () => {
+            const now = new Date();
+            const currentTime = now.toTimeString().substring(0, 5); // "HH:MM"
+            const currentDay = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][now.getDay()];
+
+            alarms.filter(a => a.active).forEach(alarm => {
+                if (alarm.time === currentTime) {
+                    // Check if it's the correct day 
+                    const shouldTrigger = alarm.days.length === 0 || alarm.days.includes(currentDay);
+
+                    if (shouldTrigger) {
+                        // Prevent triggering multiple times in the same minute
+                        if (now.getTime() - alarm.triggeredAt > 59000) {
+                            // Show a permanent modal (not just a toast) for alarms
+                            showConfirmModal(`It's ${alarm.time}! ${alarm.label || 'Time to wake up!'}`, "⏰ ALARM ACTIVE")
+                                .then(() => {
+                                    // User acknowledged the alarm, but the alarm clock is simple and keeps ringing
+                                    // until the minute changes or it's deactivated manually.
+                                    showModalMessage("Alarm dismissed.", "info");
+                                });
+
+                            // Update trigger time in memory and local storage
+                            alarm.triggeredAt = now.getTime();
+
+                            // If it's a non-repeating (once) alarm, deactivate it after triggering
+                            if (alarm.days.length === 0) {
+                                alarm.active = false;
+                                showModalMessage(`One-time alarm deactivated.`, "info");
+                            }
+                            saveLocalData('ct_alarms', alarms);
+                            renderAlarms(); // Re-render to show updated active status
+                        }
+                    }
+                }
+            });
+        }
+
+        // Check every second to be precise, though only "HH:MM" is checked
+        setInterval(checkAlarms, 1000);
+
+        // =========================================================================
+        // --- INITIALIZATION ---
+        // =========================================================================
+
+        const loadInitialData = () => {
+            loadTasks();
+            loadAlarms();
+            loadWorldClocks();
+            loadBestTime();
+            // Ensure initial view is set
+            navigateTo('view-clock');
+        };
+
+        window.onload = () => {
+            // Manually run initial icon creation for static icons
+            lucide.createIcons();
+            loadInitialData();
+        };
+    </script>
+</body>
+
+</html>
